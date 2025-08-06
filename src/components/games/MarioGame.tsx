@@ -7,32 +7,66 @@ const MarioGame = () => {
   const assets = gameAssets[currentTheme];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
+  const [level, setLevel] = useState(1);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [levelComplete, setLevelComplete] = useState(false);
+  const [grassPercentage, setGrassPercentage] = useState(100);
 
   const gameStateRef = useRef({
     kate: { 
       x: 50, 
-      y: 300, 
-      velY: 0, 
-      velX: 0,
-      onGround: true, 
+      y: 50, 
       width: 20, 
-      height: 25,
-      facing: 'right' as 'left' | 'right'
+      height: 20,
+      direction: 'right' as 'up' | 'down' | 'left' | 'right',
+      speed: 2,
+      mowerWidth: 25,
+      mowerHeight: 25
     },
-    platforms: [] as Array<{ x: number, y: number, width: number, height: number, type: string }>,
-    collectibles: [] as Array<{ x: number, y: number, collected: boolean, type: string, points: number }>,
+    grass: [] as Array<{ x: number, y: number, mowed: boolean }>,
+    mowedTrail: [] as Array<{ x: number, y: number }>,
+    lawnShape: [] as Array<{ x: number, y: number, width: number, height: number }>,
     gameLoop: null as number | null,
-    gravity: 0.5,
-    jumpPower: -12,
-    speed: 4,
+    gridSize: 10,
     keys: {
+      up: false,
+      down: false,
       left: false,
-      right: false,
-      jump: false
-    }
+      right: false
+    },
+    lastMowedPosition: { x: -1, y: -1 }
   });
+
+  // Level configurations with different lawn shapes
+  const levelShapes = [
+    // Level 1: Rectangle
+    [{ x: 100, y: 100, width: 400, height: 200 }],
+    // Level 2: L-Shape
+    [
+      { x: 100, y: 100, width: 200, height: 150 },
+      { x: 100, y: 250, width: 350, height: 100 }
+    ],
+    // Level 3: U-Shape
+    [
+      { x: 100, y: 100, width: 100, height: 200 },
+      { x: 100, y: 300, width: 300, height: 50 },
+      { x: 300, y: 100, width: 100, height: 200 }
+    ],
+    // Level 4: Cross shape
+    [
+      { x: 200, y: 50, width: 100, height: 150 },
+      { x: 100, y: 150, width: 300, height: 100 },
+      { x: 200, y: 250, width: 100, height: 100 }
+    ],
+    // Level 5: Complex shape
+    [
+      { x: 50, y: 50, width: 150, height: 100 },
+      { x: 250, y: 50, width: 150, height: 100 },
+      { x: 100, y: 150, width: 250, height: 50 },
+      { x: 150, y: 200, width: 150, height: 100 }
+    ]
+  ];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -41,245 +75,239 @@ const MarioGame = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    const initGame = () => {
-      // Create platforms with theme-appropriate styling
-      gameStateRef.current.platforms = [
-        { x: 0, y: 350, width: 600, height: 50, type: 'ground' }, // Ground
-        { x: 150, y: 280, width: 100, height: 20, type: 'platform' },
-        { x: 300, y: 220, width: 100, height: 20, type: 'platform' },
-        { x: 450, y: 160, width: 100, height: 20, type: 'platform' },
-        { x: 250, y: 100, width: 80, height: 20, type: 'platform' },
-        { x: 80, y: 180, width: 60, height: 20, type: 'platform' }
-      ];
-
-      // Create collectibles based on theme
-      gameStateRef.current.collectibles = [
-        { x: 180, y: 250, collected: false, type: assets.collectibles[0]?.name || 'item', points: assets.collectibles[0]?.points || 100 },
-        { x: 330, y: 190, collected: false, type: assets.collectibles[1]?.name || 'item', points: assets.collectibles[1]?.points || 150 },
-        { x: 480, y: 130, collected: false, type: assets.collectibles[2]?.name || 'item', points: assets.collectibles[2]?.points || 200 },
-        { x: 270, y: 70, collected: false, type: assets.collectibles[3]?.name || 'bonus', points: assets.collectibles[3]?.points || 300 },
-        { x: 100, y: 150, collected: false, type: assets.collectibles[0]?.name || 'item', points: assets.collectibles[0]?.points || 100 },
-        { x: 520, y: 320, collected: false, type: assets.collectibles[1]?.name || 'item', points: assets.collectibles[1]?.points || 150 }
-      ];
-
-      gameStateRef.current.kate = { 
-        x: 50, 
-        y: 300, 
-        velY: 0, 
-        velX: 0,
-        onGround: true, 
-        width: 20, 
-        height: 25,
-        facing: 'right'
-      };
-
-      setScore(0);
+    const initLevel = () => {
+      const currentLevelShapes = levelShapes[(level - 1) % levelShapes.length];
+      gameStateRef.current.lawnShape = currentLevelShapes;
+      
+      // Generate grass grid based on lawn shape
+      const grass: Array<{ x: number, y: number, mowed: boolean }> = [];
+      const gridSize = gameStateRef.current.gridSize;
+      
+      currentLevelShapes.forEach(shape => {
+        for (let x = shape.x; x < shape.x + shape.width; x += gridSize) {
+          for (let y = shape.y; y < shape.y + shape.height; y += gridSize) {
+            grass.push({ x, y, mowed: false });
+          }
+        }
+      });
+      
+      gameStateRef.current.grass = grass;
+      gameStateRef.current.mowedTrail = [];
+      gameStateRef.current.lastMowedPosition = { x: -1, y: -1 };
+      
+      // Position Kate at the start of the first shape
+      if (currentLevelShapes.length > 0) {
+        gameStateRef.current.kate.x = currentLevelShapes[0].x + 10;
+        gameStateRef.current.kate.y = currentLevelShapes[0].y + 10;
+      }
+      
+      setGrassPercentage(100);
+      setLevelComplete(false);
       setGameOver(false);
     };
 
-    const checkCollisions = () => {
-      const { kate, platforms } = gameStateRef.current;
+    const checkGrassCollision = (x: number, y: number) => {
+      return gameStateRef.current.lawnShape.some(shape => 
+        x >= shape.x && x <= shape.x + shape.width &&
+        y >= shape.y && y <= shape.y + shape.height
+      );
+    };
+
+    const mowGrass = () => {
+      const { kate, grass } = gameStateRef.current;
+      const gridSize = gameStateRef.current.gridSize;
       
-      // Platform collisions
-      kate.onGround = false;
-      
-      platforms.forEach(platform => {
-        // Check if Kate is colliding with platform
-        if (kate.x + kate.width > platform.x &&
-            kate.x < platform.x + platform.width &&
-            kate.y + kate.height > platform.y &&
-            kate.y < platform.y + platform.height) {
+      // Find grass tiles under the mower
+      grass.forEach(grassTile => {
+        const distance = Math.sqrt(
+          Math.pow(kate.x + kate.width/2 - grassTile.x, 2) + 
+          Math.pow(kate.y + kate.height/2 - grassTile.y, 2)
+        );
+        
+        if (distance < gridSize * 1.5 && !grassTile.mowed) {
+          grassTile.mowed = true;
           
-          // Landing on top of platform
-          if (kate.velY > 0 && kate.y < platform.y) {
-            kate.y = platform.y - kate.height;
-            kate.velY = 0;
-            kate.onGround = true;
-          }
-          // Hitting platform from below
-          else if (kate.velY < 0 && kate.y > platform.y) {
-            kate.y = platform.y + platform.height;
-            kate.velY = 0;
-          }
-          // Side collisions
-          else if (kate.velX > 0 && kate.x < platform.x) {
-            kate.x = platform.x - kate.width;
-            kate.velX = 0;
-          }
-          else if (kate.velX < 0 && kate.x > platform.x) {
-            kate.x = platform.x + platform.width;
-            kate.velX = 0;
-          }
+          // Add to mowed trail
+          gameStateRef.current.mowedTrail.push({
+            x: grassTile.x,
+            y: grassTile.y
+          });
+          
+          // Update score
+          setScore(prev => prev + 10);
         }
       });
       
-      // Collectible collisions
-      gameStateRef.current.collectibles.forEach(collectible => {
-        if (!collectible.collected &&
-            kate.x + kate.width > collectible.x - 10 &&
-            kate.x < collectible.x + 20 &&
-            kate.y + kate.height > collectible.y - 10 &&
-            kate.y < collectible.y + 20) {
-          
-          collectible.collected = true;
-          setScore(prev => prev + collectible.points);
-        }
-      });
+      // Check if lawn is complete
+      const totalGrass = grass.length;
+      const mowedGrass = grass.filter(g => g.mowed).length;
+      const percentage = totalGrass > 0 ? ((totalGrass - mowedGrass) / totalGrass) * 100 : 0;
+      setGrassPercentage(Math.max(0, percentage));
       
-      // Check win condition
-      if (gameStateRef.current.collectibles.every(c => c.collected)) {
-        setGameOver(true);
+      if (mowedGrass >= totalGrass * 0.95) { // 95% completion
+        setLevelComplete(true);
+        setScore(prev => prev + level * 500); // Bonus points for completing level
       }
+    };
+
+    const checkGameOver = () => {
+      const { kate, mowedTrail } = gameStateRef.current;
+      const currentPos = { 
+        x: Math.floor(kate.x / gameStateRef.current.gridSize) * gameStateRef.current.gridSize,
+        y: Math.floor(kate.y / gameStateRef.current.gridSize) * gameStateRef.current.gridSize
+      };
       
-      // Check if Kate fell off the screen
-      if (kate.y > canvas.height) {
+      // Check if Kate stepped on already mowed grass (excluding the immediate last position)
+      const isOnMowedGrass = mowedTrail.some((trail, index) => {
+        if (index === mowedTrail.length - 1) return false; // Don't count the most recent tile
+        
+        const distance = Math.sqrt(
+          Math.pow(currentPos.x - trail.x, 2) + 
+          Math.pow(currentPos.y - trail.y, 2)
+        );
+        return distance < gameStateRef.current.gridSize;
+      });
+      
+      // Check if Kate is outside the lawn boundaries
+      const isInBounds = checkGrassCollision(kate.x + kate.width/2, kate.y + kate.height/2);
+      
+      if (isOnMowedGrass || !isInBounds) {
         setGameOver(true);
       }
     };
 
     const update = () => {
-      if (!gameStarted || gameOver) return;
+      if (!gameStarted || gameOver || levelComplete) return;
       
-      const { kate, gravity, jumpPower, speed, keys } = gameStateRef.current;
+      const { kate, keys } = gameStateRef.current;
       
-      // Handle input
-      if (keys.left) {
-        kate.velX = -speed;
-        kate.facing = 'left';
-      } else if (keys.right) {
-        kate.velX = speed;
-        kate.facing = 'right';
-      } else {
-        kate.velX *= 0.8; // Friction
+      // Update Kate's position based on keys
+      if (keys.up && kate.y > 0) {
+        kate.y -= kate.speed;
+        kate.direction = 'up';
+      }
+      if (keys.down && kate.y < 350) {
+        kate.y += kate.speed;
+        kate.direction = 'down';
+      }
+      if (keys.left && kate.x > 0) {
+        kate.x -= kate.speed;
+        kate.direction = 'left';
+      }
+      if (keys.right && kate.x < 570) {
+        kate.x += kate.speed;
+        kate.direction = 'right';
       }
       
-      if (keys.jump && kate.onGround) {
-        kate.velY = jumpPower;
-        kate.onGround = false;
-      }
-      
-      // Apply gravity
-      if (!kate.onGround) {
-        kate.velY += gravity;
-      }
-      
-      // Update position
-      kate.x += kate.velX;
-      kate.y += kate.velY;
-      
-      // Keep Kate on screen horizontally
-      if (kate.x < 0) kate.x = 0;
-      if (kate.x + kate.width > canvas.width) kate.x = canvas.width - kate.width;
-      
-      checkCollisions();
+      mowGrass();
+      checkGameOver();
     };
 
     const draw = () => {
-      // Clear canvas with theme background
+      const canvas = canvasRef.current!;
+      
+      // Clear canvas with background
       ctx.fillStyle = assets.environment.backgroundColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Draw background elements
-      assets.environment.backgroundElements.forEach((element, index) => {
-        ctx.font = '24px Arial';
-        ctx.fillStyle = assets.environment.accentColor;
-        ctx.fillText(element, 50 + (index * 80), 50 + Math.sin(Date.now() * 0.001 + index) * 10);
-      });
-      
-      // Draw platforms
-      gameStateRef.current.platforms.forEach(platform => {
-        if (platform.type === 'ground') {
+      // Draw lawn shapes (unmowed grass)
+      gameStateRef.current.grass.forEach(grassTile => {
+        if (!grassTile.mowed) {
           ctx.fillStyle = assets.environment.groundColor;
-        } else {
-          ctx.fillStyle = assets.environment.platformColor;
-        }
-        
-        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-        
-        // Add platform decoration
-        ctx.fillStyle = assets.environment.accentColor;
-        ctx.fillRect(platform.x + 2, platform.y + 2, platform.width - 4, 4);
-      });
-      
-      // Draw collectibles
-      gameStateRef.current.collectibles.forEach((collectible, index) => {
-        if (!collectible.collected) {
-          const collectibleAsset = assets.collectibles[index % assets.collectibles.length];
+          ctx.fillRect(grassTile.x, grassTile.y, gameStateRef.current.gridSize, gameStateRef.current.gridSize);
           
-          // Draw collectible with bounce animation
-          const bounceY = collectible.y + Math.sin(Date.now() * 0.005 + index) * 3;
-          
-          ctx.fillStyle = collectibleAsset?.color || '#F59E0B';
-          ctx.beginPath();
-          ctx.arc(collectible.x + 10, bounceY + 10, 8, 0, Math.PI * 2);
-          ctx.fill();
-          
-          // Add emoji/symbol
-          ctx.font = '16px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillText(collectibleAsset?.emoji || '⭐', collectible.x + 10, bounceY + 15);
+          // Add grass texture
+          ctx.fillStyle = '#90EE90'; // Light green for grass
+          ctx.fillRect(grassTile.x + 1, grassTile.y + 1, gameStateRef.current.gridSize - 2, gameStateRef.current.gridSize - 2);
         }
       });
       
-      // Draw Kate (Mario-style character)
+      // Draw mowed trail
+      gameStateRef.current.mowedTrail.forEach(trail => {
+        ctx.fillStyle = '#8B4513'; // Brown for mowed areas
+        ctx.fillRect(trail.x, trail.y, gameStateRef.current.gridSize, gameStateRef.current.gridSize);
+        
+        // Add mowed grass pattern
+        ctx.fillStyle = '#A0522D';
+        ctx.fillRect(trail.x + 2, trail.y + 2, gameStateRef.current.gridSize - 4, gameStateRef.current.gridSize - 4);
+      });
+      
+      // Draw Kate's lawn mower
       const { kate } = gameStateRef.current;
       
-      // Body
+      // Mower body
       ctx.fillStyle = assets.player.color;
       ctx.fillRect(kate.x, kate.y, kate.width, kate.height);
       
-      // Add character details
+      // Mower details based on direction
       ctx.fillStyle = assets.player.secondaryColor;
-      ctx.fillRect(kate.x + 2, kate.y + 2, kate.width - 4, kate.height - 10);
+      switch(kate.direction) {
+        case 'up':
+          ctx.fillRect(kate.x + 5, kate.y - 3, 10, 3);
+          break;
+        case 'down':
+          ctx.fillRect(kate.x + 5, kate.y + kate.height, 10, 3);
+          break;
+        case 'left':
+          ctx.fillRect(kate.x - 3, kate.y + 5, 3, 10);
+          break;
+        case 'right':
+          ctx.fillRect(kate.x + kate.width, kate.y + 5, 3, 10);
+          break;
+      }
       
-      // Face/head
-      ctx.fillStyle = assets.player.accent;
-      ctx.beginPath();
-      ctx.arc(kate.x + kate.width/2, kate.y + 6, 6, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Add theme-specific character emoji
-      ctx.font = '12px Arial';
+      // Character indicator
+      ctx.font = '16px Arial';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#000000';
-      ctx.fillText(assets.player.emoji, kate.x + kate.width/2, kate.y - 8);
+      ctx.fillText(assets.player.emoji, kate.x + kate.width/2, kate.y - 5);
       
-      // Direction indicator (simple)
-      ctx.fillStyle = assets.player.color;
-      if (kate.facing === 'right') {
-        ctx.fillRect(kate.x + kate.width - 2, kate.y + kate.height/2 - 2, 4, 4);
-      } else {
-        ctx.fillRect(kate.x - 2, kate.y + kate.height/2 - 2, 4, 4);
+      // Cutting effect around mower
+      if (gameStarted && !gameOver && !levelComplete) {
+        ctx.strokeStyle = assets.player.accent;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(kate.x + kate.width/2, kate.y + kate.height/2, 15, 0, Math.PI * 2);
+        ctx.stroke();
       }
     };
 
     const gameLoop = () => {
       update();
       draw();
-      if (gameStarted && !gameOver) {
+      if (gameStarted && !gameOver && !levelComplete) {
         gameStateRef.current.gameLoop = requestAnimationFrame(gameLoop);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!gameStarted || gameOver || levelComplete) return;
+      
       const { keys } = gameStateRef.current;
+      
       switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          keys.up = true;
+          e.preventDefault();
+          break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          keys.down = true;
+          e.preventDefault();
+          break;
         case 'ArrowLeft':
         case 'a':
         case 'A':
           keys.left = true;
+          e.preventDefault();
           break;
         case 'ArrowRight':
         case 'd':
         case 'D':
           keys.right = true;
-          break;
-        case 'ArrowUp':
-        case ' ':
-        case 'w':
-        case 'W':
-          keys.jump = true;
           e.preventDefault();
           break;
       }
@@ -287,7 +315,18 @@ const MarioGame = () => {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const { keys } = gameStateRef.current;
+      
       switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          keys.up = false;
+          break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          keys.down = false;
+          break;
         case 'ArrowLeft':
         case 'a':
         case 'A':
@@ -298,12 +337,6 @@ const MarioGame = () => {
         case 'D':
           keys.right = false;
           break;
-        case 'ArrowUp':
-        case ' ':
-        case 'w':
-        case 'W':
-          keys.jump = false;
-          break;
       }
     };
 
@@ -311,10 +344,10 @@ const MarioGame = () => {
     window.addEventListener('keyup', handleKeyUp);
     
     if (gameStarted) {
-      initGame();
+      initLevel();
       gameLoop();
     } else {
-      initGame();
+      initLevel();
       draw();
     }
 
@@ -325,17 +358,27 @@ const MarioGame = () => {
         cancelAnimationFrame(gameStateRef.current.gameLoop);
       }
     };
-  }, [gameStarted, gameOver, assets, currentTheme]);
+  }, [gameStarted, gameOver, levelComplete, level, assets, currentTheme]);
 
   const startGame = () => {
     setGameStarted(true);
     setGameOver(false);
+    setLevelComplete(false);
   };
 
   const resetGame = () => {
     setGameStarted(false);
     setGameOver(false);
+    setLevelComplete(false);
+    setLevel(1);
     setScore(0);
+    setGrassPercentage(100);
+  };
+
+  const nextLevel = () => {
+    setLevel(prev => prev + 1);
+    setLevelComplete(false);
+    setGameStarted(true);
   };
 
   return (
@@ -345,7 +388,10 @@ const MarioGame = () => {
           Score: {score}
         </div>
         <div className="text-sm" style={{ color: assets.environment.accentColor }}>
-          Items: {gameStateRef.current.collectibles.filter(c => c.collected).length} / {gameStateRef.current.collectibles.length}
+          Level: {level}
+        </div>
+        <div className="text-sm" style={{ color: assets.environment.accentColor }}>
+          Grass: {Math.round(grassPercentage)}%
         </div>
       </div>
       
@@ -354,47 +400,75 @@ const MarioGame = () => {
           ref={canvasRef}
           width={600}
           height={400}
-          className="border-2 rounded-lg"
+          className="border-2 rounded-lg game-button"
           style={{ 
             borderColor: assets.environment.accentColor,
             backgroundColor: assets.environment.backgroundColor 
           }}
+          tabIndex={0}
         />
         
         {!gameStarted && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
             <button
               onClick={startGame}
-              className="px-6 py-3 rounded-lg font-bold text-white transition-transform hover:scale-105"
+              className="game-button px-6 py-3 rounded-lg font-bold text-white transition-transform hover:scale-105 focus:scale-105"
               style={{ backgroundColor: assets.player.color }}
+              aria-label={`Start ${assets.player.name} Lawn Mowing Game`}
             >
-              Start {assets.player.name} Adventure
+              Start {assets.player.name}'s Lawn Service
             </button>
           </div>
         )}
         
         {gameOver && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-75 rounded-lg">
-            <h3 className="text-xl font-bold text-white mb-4">
-              {gameStateRef.current.collectibles.every(c => c.collected) ? 'You Win!' : 'Game Over!'}
-            </h3>
-            <p className="text-white mb-4">Final Score: {score}</p>
+            <h3 className="text-xl font-bold text-white mb-4">Game Over!</h3>
+            <p className="text-white mb-2">You went over already mowed grass or left the lawn!</p>
+            <p className="text-white mb-4">Score: {score} | Level: {level}</p>
             <button
               onClick={resetGame}
-              className="px-6 py-3 rounded-lg font-bold text-white transition-transform hover:scale-105"
+              className="game-button px-6 py-3 rounded-lg font-bold text-white transition-transform hover:scale-105 focus:scale-105"
               style={{ backgroundColor: assets.player.color }}
+              aria-label="Restart lawn mowing game"
             >
-              Play Again
+              Try Again
             </button>
+          </div>
+        )}
+        
+        {levelComplete && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-75 rounded-lg">
+            <h3 className="text-xl font-bold text-yellow-400 mb-4">🏆 Level Complete!</h3>
+            <p className="text-white mb-2">Excellent mowing! Lawn is pristine!</p>
+            <p className="text-white mb-4">Score: {score} | Level: {level}</p>
+            <div className="space-x-4">
+              <button
+                onClick={nextLevel}
+                className="game-button px-6 py-3 rounded-lg font-bold text-white transition-transform hover:scale-105 focus:scale-105"
+                style={{ backgroundColor: assets.collectibles[0]?.color || '#F59E0B' }}
+                aria-label="Continue to next level"
+              >
+                Next Level
+              </button>
+              <button
+                onClick={resetGame}
+                className="game-button px-4 py-3 rounded-lg font-bold text-white transition-transform hover:scale-105 focus:scale-105"
+                style={{ backgroundColor: assets.player.color }}
+                aria-label="Restart from level 1"
+              >
+                Restart
+              </button>
+            </div>
           </div>
         )}
       </div>
       
       <div className="text-center text-sm opacity-75 max-w-md">
-        <p>Arrow keys or WASD to move, Spacebar/W to jump</p>
-        <p>Collect all {assets.collectibles[0]?.name || 'items'} to win!</p>
+        <p>Arrow keys or WASD to move the lawn mower</p>
+        <p>Mow all the grass without going over already mowed areas!</p>
         <p className="text-xs mt-2">
-          Theme: {currentTheme} | Character: {assets.player.emoji} {assets.player.name}
+          Theme: {currentTheme} | Gardener: {assets.player.emoji} {assets.player.name}
         </p>
       </div>
     </div>

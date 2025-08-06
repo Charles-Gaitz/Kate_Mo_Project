@@ -237,95 +237,142 @@ function App() {
       )}
       
       {/* Theme Selector */}
-      <ThemeSelector />
+      <header role="banner">
+        <ThemeSelector />
+      </header>
       
       {/* Main Content */}
-      <div className="relative z-10 animate-fadeIn">
+      <main role="main" className="relative z-10 animate-fadeIn">
         <LandingSection theme={theme} />
         <AboutSection theme={theme} />
         <ArcadeSection theme={theme} />
-      </div>
+      </main>
       
       {/* Footer */}
-      <footer className={`text-center py-8 ${theme.text} opacity-75`}>
+      <footer role="contentinfo" className={`text-center py-8 ${theme.text} opacity-75`}>
         <p className="text-sm">Made with ❤️ for the amazing Kate Morales</p>
       </footer>
       
       {/* CSS animations for enhanced themes */}
       {(isStarWars || isBarbie || isNature || isWinter || isSpring || isSummer || isAutumn) && (
         <style>{`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          
-          @keyframes slideInLeft {
-            from { opacity: 0; transform: translateX(-50px); }
-            to { opacity: 1; transform: translateX(0); }
-          }
-          
-          @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(50px); }
-            to { opacity: 1; transform: translateX(0); }
-          }
-          
-          @keyframes bounce {
-            0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
-            40%, 43% { transform: translate3d(0,-30px,0); }
-            70% { transform: translate3d(0,-15px,0); }
-            90% { transform: translate3d(0,-4px,0); }
-          }
-          
-          @keyframes twinkle {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.2); }
-          }
-          
-          @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-10px) rotate(5deg); }
-            66% { transform: translateY(5px) rotate(-3deg); }
-          }
-          
-          @keyframes gentleFloat {
-            0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
-            25% { transform: translateY(-8px) translateX(3px) rotate(2deg); }
-            50% { transform: translateY(-5px) translateX(-2px) rotate(-1deg); }
+          /* Animations only for users who haven't requested reduced motion */
+          @media (prefers-reduced-motion: no-preference) {
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(20px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            
+            @keyframes fadeInUp {
+              from { opacity: 0; transform: translateY(30px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            
+            @keyframes slideInLeft {
+              from { opacity: 0; transform: translateX(-50px); }
+              to { opacity: 1; transform: translateX(0); }
+            }
+            
+            @keyframes slideInRight {
+              from { opacity: 0; transform: translateX(50px); }
+              to { opacity: 1; transform: translateX(0); }
+            }
+            
+            @keyframes bounce {
+              0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+              40%, 43% { transform: translate3d(0,-30px,0); }
+              70% { transform: translate3d(0,-15px,0); }
+              90% { transform: translate3d(0,-4px,0); }
+            }
+            
+            @keyframes twinkle {
+              0%, 100% { opacity: 0.3; transform: scale(1); }
+              50% { opacity: 1; transform: scale(1.2); }
+            }
+            
+            @keyframes float {
+              0%, 100% { transform: translateY(0px) rotate(0deg); }
+              33% { transform: translateY(-10px) rotate(5deg); }
+              66% { transform: translateY(5px) rotate(-3deg); }
+            }
+            
+            @keyframes gentleFloat {
+              0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+              25% { transform: translateY(-8px) translateX(3px) rotate(2deg); }
+              50% { transform: translateY(-5px) translateX(-2px) rotate(-1deg); }
             75% { transform: translateY(-12px) translateX(4px) rotate(3deg); }
           }
-          
-          @keyframes gentlePulse {
-            0%, 100% { opacity: 0.2; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(1.1); }
+              75% { transform: translateY(2px) translateX(1px) rotate(1deg); }
+            }
+            
+            @keyframes gentlePulse {
+              0%, 100% { opacity: 0.2; transform: scale(1); }
+              50% { opacity: 0.4; transform: scale(1.1); }
+            }
+            
+            .animate-fadeIn {
+              animation: fadeIn 1s ease-out;
+            }
+            
+            .animate-fadeInUp {
+              animation: fadeInUp 0.8s ease-out both;
+            }
+            
+            .animate-slideInLeft {
+              animation: slideInLeft 0.8s ease-out;
+            }
+            
+            .animate-slideInRight {
+              animation: slideInRight 0.8s ease-out;
+            }
+            
+            .animate-bounce {
+              animation: bounce 2s infinite;
+            }
+            
+            .animate-pulse {
+              animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
           }
           
-          .animate-fadeIn {
-            animation: fadeIn 1s ease-out;
+          /* Reduced motion fallbacks */
+          @media (prefers-reduced-motion: reduce) {
+            .animate-fadeIn,
+            .animate-fadeInUp,
+            .animate-slideInLeft,
+            .animate-slideInRight,
+            .animate-bounce,
+            .animate-pulse {
+              animation: none;
+            }
+            
+            /* Simple fade-in for essential visibility */
+            .animate-fadeIn {
+              opacity: 1;
+            }
           }
           
-          .animate-fadeInUp {
-            animation: fadeInUp 0.8s ease-out both;
+          /* Focus styles for accessibility */
+          button:focus,
+          [role="button"]:focus,
+          [tabindex]:focus {
+            outline: 2px solid #3B82F6;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
           }
           
-          .animate-slideInLeft {
-            animation: slideInLeft 0.8s ease-out;
+          /* Theme icon focus styles */
+          .theme-icon:focus {
+            transform: scale(1.1);
+            outline: 2px solid #3B82F6;
+            outline-offset: 3px;
+            border-radius: 50%;
           }
           
-          .animate-slideInRight {
-            animation: slideInRight 0.8s ease-out;
-          }
-          
-          .animate-bounce {
-            animation: bounce 2s infinite;
-          }
-          
-          .animate-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          /* Game button focus styles */
+          .game-button:focus {
+            outline: 3px solid #F59E0B;
+            outline-offset: 2px;
           }
           
           /* Mobile optimizations */

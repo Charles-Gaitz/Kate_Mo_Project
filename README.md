@@ -6,7 +6,7 @@ A comprehensive React + TypeScript arcade game system featuring Kate Morales as 
 
 ### Three Authentic Arcade Games
 - **🟡 PacmanGame**: Maze navigation with ghost AI and dot collection mechanics
-- **🍄 MarioGame**: Physics-based platformer with jumping mechanics and collectibles
+- **� LawnMowerGame**: Strategic lawn mowing puzzle where you must mow all grass without going over the same spot twice
 - **🦕 DinosaurGame**: Endless runner with obstacle avoidance and ducking mechanics
 
 ### 🎨 Dynamic Theme System
@@ -34,6 +34,8 @@ Each theme features:
 - **Tailwind CSS 3.4.1** - Utility-first styling
 - **Canvas API** - Smooth game rendering and animations
 - **localStorage** - High score persistence per theme
+- **Lazy Loading** - Dynamic imports for improved performance (~25KB initial bundle)
+- **Accessibility** - WCAG compliant with screen reader support and keyboard navigation
 
 ## 🎮 How to Play
 
@@ -44,7 +46,7 @@ Each theme features:
 
 ### Game Objectives
 - **Pacman**: Collect all dots while avoiding ghosts
-- **Mario**: Jump on platforms and collect items
+- **Lawn Mower**: Mow all grass in unique lawn shapes without backtracking over mowed areas
 - **Dinosaur**: Survive as long as possible, avoid obstacles
 
 ## 🛠️ Development
@@ -70,8 +72,17 @@ npm run dev
 npm run build
 ```
 
+## ♿ Accessibility Features
+- **Semantic HTML** with proper landmarks (header, main, nav, footer)
+- **ARIA labels** and roles for screen readers
+- **Keyboard navigation** support for all interactive elements
+- **Focus indicators** with visible outlines for keyboard users
+- **Reduced motion** support respecting user preferences
+- **Screen reader** announcements for theme changes
+- **Color contrast** optimized for readability across all themes
+
 ## 📱 Responsive Design
-Fully responsive design that works on desktop and mobile devices.
+Fully responsive design that works on desktop and mobile devices with touch controls.
 
 ## 🏆 High Scores
 Each theme maintains separate high scores, stored locally in your browser.

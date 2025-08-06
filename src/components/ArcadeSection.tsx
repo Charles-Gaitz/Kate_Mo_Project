@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import PacmanGame from './games/PacmanGame';
-import DinosaurGame from './games/DinosaurGame';
-import MarioGame from './games/MarioGame';
+import React, { useState, Suspense, lazy } from 'react';
+
+// Lazy load game components for better performance
+const PacmanGame = lazy(() => import('./games/PacmanGame'));
+const DinosaurGame = lazy(() => import('./games/DinosaurGame'));
+const MarioGame = lazy(() => import('./games/MarioGame'));
 
 interface ArcadeSectionProps {
   theme: any;
@@ -23,8 +25,8 @@ const ArcadeSection: React.FC<ArcadeSectionProps> = ({ theme }) => {
     },
     {
       id: 'mario',
-      name: 'Super Kate Galaxy',
-      description: 'Jump through asteroid fields and collect lightsaber crystals!',
+      name: 'Kate\'s Galactic Lawn Service',
+      description: 'Help Kate mow the Death Star\'s garden without going over mowed areas!',
       emoji: '🚀',
       component: MarioGame
     },
@@ -47,8 +49,8 @@ const ArcadeSection: React.FC<ArcadeSectionProps> = ({ theme }) => {
     },
     {
       id: 'mario',
-      name: 'Super Kate World',
-      description: 'Jump through Kate\'s fabulous world and collect all the accessories!',
+      name: 'Kate\'s Dream Lawn',
+      description: 'Mow Kate\'s magical pink lawn in perfect patterns without backtracking!',
       emoji: '👑',
       component: MarioGame
     },
@@ -71,8 +73,8 @@ const ArcadeSection: React.FC<ArcadeSectionProps> = ({ theme }) => {
     },
     {
       id: 'mario',
-      name: 'Super Kate Forest',
-      description: 'Jump through Kate\'s magical forest and collect all the nature treasures!',
+      name: 'Kate\'s Eco Lawn Care',
+      description: 'Mow Kate\'s organic garden in eco-friendly patterns using sustainable methods!',
       emoji: '🌲',
       component: MarioGame
     },
@@ -95,8 +97,8 @@ const ArcadeSection: React.FC<ArcadeSectionProps> = ({ theme }) => {
     },
     {
       id: 'mario',
-      name: 'Super Kate Bros',
-      description: 'Jump through Kate\'s world of fun and adventure!',
+      name: 'Kate\'s Lawn Mowing Service',
+      description: 'Help Kate mow different shaped lawns without going over the same spot twice!',
       emoji: '🍄',
       component: MarioGame
     },
@@ -124,13 +126,23 @@ const ArcadeSection: React.FC<ArcadeSectionProps> = ({ theme }) => {
             </h2>
             <button
               onClick={() => setSelectedGame(null)}
-              className={`px-6 py-3 rounded-full ${theme.button} transition-all duration-300 transform hover:scale-105`}
+              className={`game-button px-6 py-3 rounded-full ${theme.button} transition-all duration-300 transform hover:scale-105 focus:scale-105`}
+              aria-label="Return to arcade game selection"
             >
               Back to Arcade
             </button>
           </div>
           
-          {GameComponent && <GameComponent theme={theme} />}
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading game...</p>
+              </div>
+            </div>
+          }>
+            {GameComponent && <GameComponent />}
+          </Suspense>
         </div>
       </section>
     );
@@ -163,10 +175,19 @@ const ArcadeSection: React.FC<ArcadeSectionProps> = ({ theme }) => {
         
         <div className="grid md:grid-cols-3 gap-8">
           {games.map((game) => (
-            <div 
+                        <div
               key={game.id}
-              className={`${theme.card} rounded-2xl p-8 text-center shadow-xl transform hover:scale-105 transition-all duration-300 cursor-pointer`}
+              className={`${theme.card} rounded-3xl p-8 text-center cursor-pointer transition-all duration-500 transform hover:scale-105 hover:shadow-2xl shadow-xl`}
               onClick={() => setSelectedGame(game.id)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Play ${game.name} - ${game.description}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedGame(game.id);
+                }
+              }}
             >
               <div className="text-6xl mb-4">{game.emoji}</div>
               <h3 className={`text-2xl font-bold ${theme.textDark} mb-4`}>
@@ -175,7 +196,11 @@ const ArcadeSection: React.FC<ArcadeSectionProps> = ({ theme }) => {
               <p className={`${theme.textDark} mb-6 opacity-75`}>
                 {game.description}
               </p>
-              <button className={`px-6 py-3 rounded-full ${theme.button} transition-all duration-300 transform hover:scale-105`}>
+              <button 
+                className={`game-button px-6 py-3 rounded-full ${theme.button} transition-all duration-300 transform hover:scale-105 focus:scale-105`}
+                aria-label={`Start ${game.name} game`}
+                tabIndex={-1}
+              >
                 Play Now!
               </button>
             </div>

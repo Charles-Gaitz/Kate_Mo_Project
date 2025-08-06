@@ -16,32 +16,50 @@ const ThemeSelector = () => {
   ];
 
   return (
-    <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 ${theme.card} rounded-full p-3 shadow-xl border-2 ${
-      theme.name === 'Star Wars' ? 'border-yellow-400' : 
-      theme.name === 'Barbie' ? 'border-pink-400' : 
-      theme.name === 'Nature' ? 'border-green-400' : 
-      'border-gray-200'
-    }`}>
-      <div className="flex flex-wrap gap-2 justify-center">
-        {themeButtons.map((themeBtn) => {
-          const IconComponent = themeBtn.icon;
-          return (
-            <button
-              key={themeBtn.key}
-              onClick={() => setTheme(themeBtn.key as any)}
-              className={`p-3 rounded-full transition-all duration-500 transform hover:scale-125 hover:rotate-12 ${
-                currentTheme === themeBtn.key 
-                  ? `${themeBtn.color} scale-110 shadow-lg ring-2 ring-white` 
-                  : `${themeBtn.color} opacity-70 hover:opacity-100`
-              }`}
-              title={themeBtn.name}
-            >
-              <IconComponent size={18} />
-            </button>
-          );
-        })}
+    <>
+      {/* Screen reader announcements */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        Current theme: {theme.name}
       </div>
-    </div>
+      
+      <nav 
+        className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 ${theme.card} rounded-full p-3 shadow-xl border-2 ${
+          theme.name === 'Star Wars' ? 'border-yellow-400' : 
+          theme.name === 'Barbie' ? 'border-pink-400' : 
+          theme.name === 'Nature' ? 'border-green-400' : 
+          'border-gray-200'
+        }`}
+        role="navigation"
+        aria-label="Theme selector"
+      >
+        <div className="flex flex-wrap gap-2 justify-center">
+          {themeButtons.map((themeBtn) => {
+            const IconComponent = themeBtn.icon;
+            const isActive = currentTheme === themeBtn.key;
+            
+            return (
+              <button
+                key={themeBtn.key}
+                onClick={() => setTheme(themeBtn.key as any)}
+                className={`theme-icon p-3 rounded-full transition-all duration-500 transform hover:scale-125 hover:rotate-12 focus:scale-110 focus:rotate-6 ${
+                  isActive 
+                    ? `${themeBtn.color} scale-110 shadow-lg ring-2 ring-white` 
+                    : `${themeBtn.color} opacity-70 hover:opacity-100`
+                }`}
+                title={`Switch to ${themeBtn.name} theme`}
+                aria-label={`Switch to ${themeBtn.name} theme`}
+                aria-pressed={isActive}
+                role="button"
+                tabIndex={0}
+              >
+                <IconComponent size={18} aria-hidden="true" />
+                <span className="sr-only">{themeBtn.name} theme</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 };
 
